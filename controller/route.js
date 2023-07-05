@@ -23,20 +23,58 @@ ticketRouter.post("/ticket", async (req, res) => {
   const seatLayout = seatStructure;
 
   function seatsAvailableInRow(row, numOfSeats) {
-    for (let i = 0; i <= seatsInRow - numOfSeats; i++) {
-      let available = true;
-      for (let j = i; j < i + numOfSeats; j++) {
-        if (seatLayout[row][j]) {
-          available = false;
-          break;
+    if (row === 11) {
+      for (let i = 0; i <= lastRowSeats - numOfSeats; i++) {
+        let available = true;
+        for (let j = i; j < i + numOfSeats; j++) {
+          if (seatLayout[row][j]) {
+            available = false;
+            break;
+          }
+        }
+        if (available) {
+          return i;
         }
       }
-      if (available) {
-        return i;
+    } else {
+      for (let i = 0; i <= seatsInRow - numOfSeats; i++) {
+        let available = true;
+        for (let j = i; j < i + numOfSeats; j++) {
+          if (seatLayout[row][j]) {
+            available = false;
+            break;
+          }
+        }
+        if (available) {
+          return i;
+        }
       }
     }
+
     return -1;
-    
+  }
+  // Check Total Number of vacant seats.
+
+  function checkVacantSeats(seatLayout) {
+    let count = 0;
+
+    for (let i = 0; i < 12; i++) {
+      if (i == 11) {
+        for (let j = 0; j < 3; j++) {
+          if (seatLayout[i][j] == false) {
+            count++;
+          }
+        }
+      } else {
+        for (let j = 0; j < 7; j++) {
+          if (seatLayout[i][j] == false) {
+            count++;
+          }
+        }
+      }
+    }
+
+    return count;
   }
 
   // Function to reserve seats
@@ -73,10 +111,10 @@ ticketRouter.post("/ticket", async (req, res) => {
     }
 
     // Reserve the seats
+    const reservedSeats = [];
+    const reservedSeatsNum = [];
 
     if (row !== -1 && seatIndex !== -1) {
-      const reservedSeats = [];
-      const reservedSeatsNum = [];
       for (let i = seatIndex; i < seatIndex + numOfSeats; i++) {
         seatLayout[row][i] = true;
         reservedSeats.push(`Row ${row + 1}, Seat ${i + 1}`);
@@ -93,7 +131,58 @@ ticketRouter.post("/ticket", async (req, res) => {
         )}`,
       });
     } else {
-      console.log("No seats available.");
+      let value = checkVacantSeats(seatLayout);
+      if (numOfSeats <= value) {
+        let count = 0;
+        let flag = false;
+        for (let i = 0; i < 12; i++) {
+          if (i == 11) {
+            for (let j = 0; j < 3; j++) {
+              if (seatLayout[i][j] == false) {
+                seatLayout[i][j] = true;
+                reservedSeats.push(`Row ${i + 1}, Seat ${j + 1}`);
+                reservedSeatsNum.push(i * 7 + j + 1);
+                count++;
+                if (count == numOfSeats) {
+                  flag = true;
+                  break;
+                }
+              }
+            }
+          } else {
+            for (let j = 0; j < 7; j++) {
+              if (seatLayout[i][j] == false) {
+                seatLayout[i][j] = true;
+                reservedSeats.push(`Row ${i + 1}, Seat ${j + 1}`);
+                reservedSeatsNum.push(i * 7 + j + 1);
+
+                count++;
+                if (count == numOfSeats) {
+                  flag = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (flag == true) {
+            await coachModel.findByIdAndUpdate(
+              { _id: id },
+              { coach: seatLayout }
+            );
+            res.send({
+              seat: `Successfully reserved ${numOfSeats} seat, seats Number: ${reservedSeatsNum.join(
+                ", "
+              )}`,
+            });
+            break;
+          }
+        }
+      } else {
+        res.send({
+          seat: `No seats available.`,
+        });
+        console.log("No seats available.");
+      }
     }
   }
   reserveSeats(+requestedBooking);
