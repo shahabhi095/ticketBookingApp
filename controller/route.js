@@ -23,7 +23,7 @@ ticketRouter.post("/ticket", async (req, res) => {
   const seatLayout = seatStructure;
 
   function seatsAvailableInRow(row, numOfSeats) {
-    if (row === 11) {
+    if (row === totalRows-1) {
       for (let i = 0; i <= lastRowSeats - numOfSeats; i++) {
         let available = true;
         for (let j = i; j < i + numOfSeats; j++) {
@@ -37,8 +37,10 @@ ticketRouter.post("/ticket", async (req, res) => {
         }
       }
     } else {
+
       for (let i = 0; i <= seatsInRow - numOfSeats; i++) {
         let available = true;
+      
         for (let j = i; j < i + numOfSeats; j++) {
           if (seatLayout[row][j]) {
             available = false;
@@ -58,15 +60,15 @@ ticketRouter.post("/ticket", async (req, res) => {
   function checkVacantSeats(seatLayout) {
     let count = 0;
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < totalRows; i++) {
       if (i == 11) {
-        for (let j = 0; j < 3; j++) {
+        for (let j = 0; j < lastRowSeats; j++) {
           if (seatLayout[i][j] == false) {
             count++;
           }
         }
       } else {
-        for (let j = 0; j < 7; j++) {
+        for (let j = 0; j < seatsInRow; j++) {
           if (seatLayout[i][j] == false) {
             count++;
           }
@@ -86,20 +88,48 @@ ticketRouter.post("/ticket", async (req, res) => {
 
     let row = -1;
     let seatIndex = -1;
-
+    let arr = []
+for(let k =0; k<totalRows; k++){
+  const availableSeatIndex = seatsAvailableInRow(k, +numOfSeats);
+  arr.push([k,availableSeatIndex])
+}
     // Look for available seats in one row
-    for (let i = 0; i < 12; i++) {
-      const availableSeatIndex = seatsAvailableInRow(i, +numOfSeats);
-      if (availableSeatIndex !== -1) {
-        row = i;
-        seatIndex = availableSeatIndex;
-        break;
+    // for (let i = 0; i < totalRows; i++) {
+
+    //   const availableSeatIndex = seatsAvailableInRow(i, +numOfSeats);
+     
+    //   if (availableSeatIndex !== -1) {
+    //     row = i;
+    //     seatIndex = availableSeatIndex;
+    //     break;
+    //   }
+    // }
+    let min =Infinity
+    let temp 
+    for(let i =0; i<arr.length; i++){
+      if (seatsInRow - arr[i][1] + 1 < min && arr[i][1]>=0) {
+        min = arr[i][1];
+        temp = i;
+      }
+    }
+
+    if(temp){
+      row = temp;
+      seatIndex = min;
+    }else{
+      for (let i = 0; i < totalRows; i++) {
+        const availableSeatIndex = seatsAvailableInRow(i, +numOfSeats);
+        if (availableSeatIndex !== -1) {
+          row = i;
+          seatIndex = availableSeatIndex;
+          break;
+        }
       }
     }
 
     // If seats are not available in one row, book in nearby rows
     if (row === -1) {
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < totalRows; i++) {
         const availableSeatIndex = seatsAvailableInRow(i, numOfSeats);
         if (availableSeatIndex !== -1) {
           row = i;
@@ -118,7 +148,7 @@ ticketRouter.post("/ticket", async (req, res) => {
       for (let i = seatIndex; i < seatIndex + numOfSeats; i++) {
         seatLayout[row][i] = true;
         reservedSeats.push(`Row ${row + 1}, Seat ${i + 1}`);
-        reservedSeatsNum.push(row * 7 + i + 1);
+        reservedSeatsNum.push(row * seatsInRow + i + 1);
       }
       console.log(
         `Successfully reserved ${numOfSeats} seats: ${reservedSeats.join(", ")}`
@@ -135,13 +165,13 @@ ticketRouter.post("/ticket", async (req, res) => {
       if (numOfSeats <= value) {
         let count = 0;
         let flag = false;
-        for (let i = 0; i < 12; i++) {
-          if (i == 11) {
-            for (let j = 0; j < 3; j++) {
+        for (let i = 0; i < totalRows; i++) {
+          if (i == totalRows-1) {
+            for (let j = 0; j < lastRowSeats; j++) {
               if (seatLayout[i][j] == false) {
                 seatLayout[i][j] = true;
                 reservedSeats.push(`Row ${i + 1}, Seat ${j + 1}`);
-                reservedSeatsNum.push(i * 7 + j + 1);
+                reservedSeatsNum.push(i * seatsInRow + j + 1);
                 count++;
                 if (count == numOfSeats) {
                   flag = true;
@@ -150,11 +180,11 @@ ticketRouter.post("/ticket", async (req, res) => {
               }
             }
           } else {
-            for (let j = 0; j < 7; j++) {
+            for (let j = 0; j < seatsInRow; j++) {
               if (seatLayout[i][j] == false) {
                 seatLayout[i][j] = true;
                 reservedSeats.push(`Row ${i + 1}, Seat ${j + 1}`);
-                reservedSeatsNum.push(i * 7 + j + 1);
+                reservedSeatsNum.push(i * seatsInRow + j + 1);
 
                 count++;
                 if (count == numOfSeats) {
